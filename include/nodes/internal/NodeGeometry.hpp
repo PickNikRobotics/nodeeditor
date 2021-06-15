@@ -37,6 +37,7 @@ public:
 
   unsigned int
   entryHeight() const { return _entryHeight; }
+
   void
   setEntryHeight(unsigned int h) { _entryHeight = h; }
 
@@ -106,10 +107,6 @@ public:
   QPointF
   widgetPosition() const;
 
-  /// Returns the maximum height a widget can be without causing the node to grow.
-  int
-  equivalentWidgetHeight() const;
-
   unsigned int
   validationHeight() const;
 
@@ -121,13 +118,10 @@ public:
   calculateNodePositionBetweenNodePorts(PortIndex targetPortIndex, PortType targetPort, Node* targetNode,
                                         PortIndex sourcePortIndex, PortType sourcePort, Node* sourceNode,
                                         Node& newNode);
+
+  void setPortLayout( PortLayout layout);
+
 private:
-
-  unsigned int
-  captionHeight() const;
-
-  unsigned int
-  captionWidth() const;
 
   unsigned int
   portWidth(PortType portType) const;
@@ -139,8 +133,8 @@ private:
   // corresponding to fontMetrics
   // but this doesn't change constness of Node
 
-  mutable unsigned int _width;
-  mutable unsigned int _height;
+  mutable int _width;
+  mutable int _height;
   unsigned int _entryWidth;
   mutable unsigned int _inputPortWidth;
   mutable unsigned int _outputPortWidth;
@@ -149,14 +143,13 @@ private:
 
   bool _hovered;
 
-  unsigned int _nSources;
-  unsigned int _nSinks;
-
   QPointF _draggingPos;
 
   std::unique_ptr<NodeDataModel> const &_dataModel;
 
   mutable QFontMetrics _fontMetrics;
   mutable QFontMetrics _boldFontMetrics;
+
+  PortLayout _ports_layout;
 };
 }

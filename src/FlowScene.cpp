@@ -13,8 +13,8 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
-#include <QtCore/QtGlobal>
-#include <QtCore/QDebug>
+
+#include <QDebug>
 
 #include "Node.hpp"
 #include "NodeGraphicsObject.hpp"
@@ -45,11 +45,6 @@ FlowScene(std::shared_ptr<DataModelRegistry> registry,
   , _registry(std::move(registry))
 {
   setItemIndexMethod(QGraphicsScene::NoIndex);
-
-  // This connection should come first
-  connect(this, &FlowScene::connectionCreated, this, &FlowScene::setupConnectionSignals);
-  connect(this, &FlowScene::connectionCreated, this, &FlowScene::sendConnectionCreatedToNodes);
-  connect(this, &FlowScene::connectionDeleted, this, &FlowScene::sendConnectionDeletedToNodes);
 }
 
 FlowScene::
@@ -81,17 +76,9 @@ createConnection(PortType connectedPort,
   // after this function connection points are set to node port
   connection->setGraphicsObject(std::move(cgo));
 
+  connection->connectionGeometry().setPortLayout( layout() );
+
   _connections[connection->id()] = connection;
-
-  // Note: this connection isn't truly created yet. It's only partially created.
-  // Thus, don't send the connectionCreated(...) signal.
-
-  connect(connection.get(),
-          &Connection::connectionCompleted,
-          this,
-          [this](Connection const& c) {
-            connectionCreated(c);
-          });
 
   return connection;
 }
@@ -112,6 +99,18 @@ createConnection(Node& nodeIn,
                                  portIndexOut,
                                  converter);
 
+  if( nodeIn.nodeDataModel()->nPorts(PortType::In) <= static_cast<unsigned>(portIndexIn))
+  {
+      throw std::runtime_error("Fatal error in [FlowScene::createConnection]: the nodeModel "
+                               "doesn't provide this portIndexIn");
+  }
+
+  if( nodeOut.nodeDataModel()->nPorts(PortType::Out) <= static_cast<unsigned>(portIndexOut) )
+  {
+      throw std::runtime_error("Fatal error in [FlowScene::createConnection]: the nodeModel "
+                               "doesn't provide this portIndexOut");
+  }
+
   auto cgo = detail::make_unique<ConnectionGraphicsObject>(*this, *connection);
 
   nodeIn.nodeState().setConnection(PortType::In, portIndexIn, *connection);
@@ -119,6 +118,8 @@ createConnection(Node& nodeIn,
 
   // after this function connection points are set to node port
   connection->setGraphicsObject(std::move(cgo));
+
+  connection->connectionGeometry().setPortLayout( layout() );
 
   // trigger data propagation
   nodeOut.onDataUpdated(portIndexOut);
@@ -168,14 +169,22 @@ restoreConnection(QJsonObject const &connectionJson)
     return TypeConverter{};
   };
 
+  if( !nodeIn || !nodeOut)
+  {
+      qDebug() << "ERROR: invalid connection with UIDS "
+               << nodeInId << " and " << nodeOutId;
+
+      return std::shared_ptr<Connection>();
+  }
+
   std::shared_ptr<Connection> connection =
     createConnection(*nodeIn, portIndexIn,
                      *nodeOut, portIndexOut,
                      getConverter());
 
-  // Note: the connectionCreated(...) signal has already been sent
-  // by createConnection(...)
+  connectionCreated(*connection);
 
+  connection->connectionGeometry().setPortLayout( layout() );
   return connection;
 }
 
@@ -184,12 +193,9 @@ void
 FlowScene::
 deleteConnection(Connection& connection)
 {
-  auto it = _connections.find(connection.id());
-  if (it != _connections.end())
-  {
-    connection.removeFromNodes();
-    _connections.erase(it);
-  }
+  connection.removeFromNodes();
+  _connections.erase(connection.id());
+  connectionDeleted(connection);
 }
 
 
@@ -203,7 +209,9 @@ createNode(std::unique_ptr<NodeDataModel> && dataModel)
   node->setGraphicsObject(std::move(ngo));
 
   auto nodePtr = node.get();
-  _nodes[node->id()] = std::move(node);
+  nodePtr->nodeGeometry().setPortLayout( layout() );
+  auto id = node->id();
+  _nodes[id] = std::move(node);
 
   nodeCreated(*nodePtr);
   return *nodePtr;
@@ -219,8 +227,10 @@ restoreNode(QJsonObject const& nodeJson)
   auto dataModel = registry().create(modelName);
 
   if (!dataModel)
+  {
     throw std::logic_error(std::string("No registered model with name ") +
                            modelName.toLocal8Bit().data());
+  }
 
   auto node = detail::make_unique<Node>(std::move(dataModel));
   auto ngo  = detail::make_unique<NodeGraphicsObject>(*this, *node);
@@ -228,10 +238,14 @@ restoreNode(QJsonObject const& nodeJson)
 
   node->restore(nodeJson);
 
-  auto nodePtr = node.get();
-  _nodes[node->id()] = std::move(node);
+  node->nodeState().getEntries(PortType::In).resize( node->nodeDataModel()->nPorts(PortType::In));
+  node->nodeState().getEntries(PortType::Out).resize( node->nodeDataModel()->nPorts(PortType::Out));
 
-  nodePlaced(*nodePtr);
+  auto nodePtr = node.get();
+  nodePtr->nodeGeometry().setPortLayout( layout() );
+  auto id = node->id();
+  _nodes[ id ] = std::move(node);
+
   nodeCreated(*nodePtr);
   return *nodePtr;
 }
@@ -394,7 +408,8 @@ QSizeF
 FlowScene::
 getNodeSize(const Node& node) const
 {
-  return QSizeF(node.nodeGeometry().width(), node.nodeGeometry().height());
+  return QSizeF(node.nodeGeometry().width(),
+                node.nodeGeometry().height());
 }
 
 
@@ -411,21 +426,6 @@ FlowScene::
 connections() const
 {
   return _connections;
-}
-
-
-std::vector<Node*>
-FlowScene::
-allNodes() const
-{
-  std::vector<Node*> nodes;
-
-  std::transform(_nodes.begin(),
-                 _nodes.end(),
-                 std::back_inserter(nodes),
-                 [](std::pair<QUuid const, std::unique_ptr<Node>> const & p) { return p.second.get(); });
-
-  return nodes;
 }
 
 
@@ -501,6 +501,10 @@ void
 FlowScene::
 load()
 {
+  clearScene();
+
+  //-------------
+
   QString fileName =
     QFileDialog::getOpenFileName(nullptr,
                                  tr("Open Flow Scene"),
@@ -514,8 +518,6 @@ load()
 
   if (!file.open(QIODevice::ReadOnly))
     return;
-
-  clearScene();
 
   QByteArray wholeFile = file.readAll();
 
@@ -533,10 +535,15 @@ saveToMemory() const
 
   for (auto const & pair : _nodes)
   {
-    auto const &node = pair.second;
-
-    nodesJsonArray.append(node->save());
+    const FlowScene::UniqueNode &node = pair.second;
+    if(node)
+    {
+      nodesJsonArray.append(node->save());
+    }
   }
+
+  sceneJson["layout"] = (layout() == PortLayout::Horizontal) ?
+        QStringLiteral("Horizontal") : QStringLiteral("Vertical");
 
   sceneJson["nodes"] = nodesJsonArray;
 
@@ -544,11 +551,13 @@ saveToMemory() const
   for (auto const & pair : _connections)
   {
     auto const &connection = pair.second;
+    if(connection)
+    {
+      QJsonObject connectionJson = connection->save();
 
-    QJsonObject connectionJson = connection->save();
-
-    if (!connectionJson.isEmpty())
-      connectionJsonArray.append(connectionJson);
+      if (!connectionJson.isEmpty())
+        connectionJsonArray.append(connectionJson);
+    }
   }
 
   sceneJson["connections"] = connectionJsonArray;
@@ -564,6 +573,9 @@ FlowScene::
 loadFromMemory(const QByteArray& data)
 {
   QJsonObject const jsonDocument = QJsonDocument::fromJson(data).object();
+
+  QString layout = jsonDocument["layout"].toString();
+  setLayout( (layout == "Horizontal") ? PortLayout::Horizontal : PortLayout::Vertical );
 
   QJsonArray nodesJsonArray = jsonDocument["nodes"].toArray();
 
@@ -581,47 +593,23 @@ loadFromMemory(const QByteArray& data)
 }
 
 
-void
-FlowScene::
-setupConnectionSignals(Connection const& c)
+void FlowScene::setLayout( QtNodes::PortLayout layout)
 {
-  connect(&c,
-          &Connection::connectionMadeIncomplete,
-          this,
-          &FlowScene::connectionDeleted,
-          Qt::UniqueConnection);
+  _layout = layout;
+  for(auto& node: nodes() )
+  {
+    node.second->nodeGeometry().setPortLayout(layout);
+  }
+  for(auto& conn: connections() )
+  {
+    conn.second->connectionGeometry().setPortLayout(layout);
+  }
 }
 
-
-void
-FlowScene::
-sendConnectionCreatedToNodes(Connection const& c)
+QtNodes::PortLayout FlowScene::layout() const
 {
-  Node* from = c.getNode(PortType::Out);
-  Node* to   = c.getNode(PortType::In);
-
-  Q_ASSERT(from != nullptr);
-  Q_ASSERT(to != nullptr);
-
-  from->nodeDataModel()->outputConnectionCreated(c);
-  to->nodeDataModel()->inputConnectionCreated(c);
+  return _layout;
 }
-
-
-void
-FlowScene::
-sendConnectionDeletedToNodes(Connection const& c)
-{
-  Node* from = c.getNode(PortType::Out);
-  Node* to   = c.getNode(PortType::In);
-
-  Q_ASSERT(from != nullptr);
-  Q_ASSERT(to != nullptr);
-
-  from->nodeDataModel()->outputConnectionDeleted(c);
-  to->nodeDataModel()->inputConnectionDeleted(c);
-}
-
 
 //------------------------------------------------------------------------------
 namespace QtNodes

@@ -12,6 +12,7 @@
 #include "NodeDataModel.hpp"
 #include "Node.hpp"
 #include "FlowScene.hpp"
+#include <QSvgRenderer>
 
 using QtNodes::NodePainter;
 using QtNodes::NodeGeometry;
@@ -43,8 +44,6 @@ paint(QPainter* painter,
   drawConnectionPoints(painter, geom, state, model, scene);
 
   drawFilledConnectionPoints(painter, geom, state, model);
-
-  drawModelName(painter, geom, state, model);
 
   drawEntryLabels(painter, geom, state, model);
 
@@ -233,42 +232,6 @@ drawFilledConnectionPoints(QPainter * painter,
 
 void
 NodePainter::
-drawModelName(QPainter * painter,
-              NodeGeometry const & geom,
-              NodeState const & state,
-              NodeDataModel const * model)
-{
-  NodeStyle const& nodeStyle = model->nodeStyle();
-
-  Q_UNUSED(state);
-
-  if (!model->captionVisible())
-    return;
-
-  QString const &name = model->caption();
-
-  QFont f = painter->font();
-
-  f.setBold(true);
-
-  QFontMetrics metrics(f);
-
-  auto rect = metrics.boundingRect(name);
-
-  QPointF position((geom.width() - rect.width()) / 2.0,
-                   (geom.spacing() + geom.entryHeight()) / 3.0);
-
-  painter->setFont(f);
-  painter->setPen(nodeStyle.FontColor);
-  painter->drawText(position, name);
-
-  f.setBold(false);
-  painter->setFont(f);
-}
-
-
-void
-NodePainter::
 drawEntryLabels(QPainter * painter,
                 NodeGeometry const & geom,
                 NodeState const & state,
@@ -294,16 +257,7 @@ drawEntryLabels(QPainter * painter,
       else
         painter->setPen(nodeStyle.FontColor);
 
-      QString s;
-
-      if (model->portCaptionVisible(portType, i))
-      {
-        s = model->portCaption(portType, i);
-      }
-      else
-      {
-        s = model->dataType(portType, i).name;
-      }
+      QString s = model->dataType(portType, i).name;
 
       auto rect = metrics.boundingRect(s);
 

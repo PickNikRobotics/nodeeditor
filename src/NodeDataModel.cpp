@@ -9,9 +9,8 @@ NodeDataModel::
 NodeDataModel()
   : _nodeStyle(StyleCollection::nodeStyle())
 {
-  // Derived classes can initialize specific style here
+    // Derived classes can initialize specific style here
 }
-
 
 QJsonObject
 NodeDataModel::

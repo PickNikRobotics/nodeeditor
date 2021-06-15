@@ -27,13 +27,19 @@ public:
 
   void setScene(FlowScene *scene);
 
-public Q_SLOTS:
+public slots:
 
   void scaleUp();
 
   void scaleDown();
 
   void deleteSelectedNodes();
+
+signals:
+
+  void startNodeDelete();
+
+  void finishNodeDelete();
 
 protected:
 
@@ -60,6 +66,7 @@ protected:
 private:
 
   QAction* _clearSelectionAction;
+
   QAction* _deleteSelectionAction;
 
   QPointF _clickPos;

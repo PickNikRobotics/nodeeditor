@@ -120,8 +120,8 @@ move()
       _connection.connectionGeometry().setEndPoint(portType,
                                                    connectionPos);
 
-      _connection.getConnectionGraphicsObject().setGeometryChanged();
-      _connection.getConnectionGraphicsObject().update();
+      _connection.connectionGraphicsObject().setGeometryChanged();
+      _connection.connectionGraphicsObject().update();
     }
   }
 
@@ -141,7 +141,7 @@ paint(QPainter* painter,
       QStyleOptionGraphicsItem const* option,
       QWidget*)
 {
-  painter->setClipRect(option->exposedRect);
+    painter->setClipRect(option->exposedRect);
 
   ConnectionPainter::paint(painter,
                            _connection);
@@ -212,9 +212,9 @@ mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
   if (node && interaction.tryConnect())
   {
     node->resetReactionToConnection();
+    _scene.connectionCreated(_connection);
   }
-
-  if (_connection.connectionState().requiresPort())
+  else if (_connection.connectionState().requiresPort())
   {
     _scene.deleteConnection(_connection);
   }
@@ -258,4 +258,11 @@ addGraphicsEffect()
   //auto effect = new ConnectionBlurEffect(this);
   //effect->setOffset(4, 4);
   //effect->setColor(QColor(Qt::gray).darker(800));
+}
+
+void
+ConnectionGraphicsObject::
+contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
+{
+  _scene.connectionContextMenu( connection(), mapToScene(event->pos()));
 }

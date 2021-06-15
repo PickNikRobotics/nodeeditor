@@ -55,8 +55,10 @@ save() const
 
   nodeJson["model"] = _nodeDataModel->save();
 
+  double width = _nodeGraphicsObject->boundingRect().width();
+
   QJsonObject obj;
-  obj["x"] = _nodeGraphicsObject->pos().x();
+  obj["x"] = _nodeGraphicsObject->pos().x() + width*0.5;
   obj["y"] = _nodeGraphicsObject->pos().y();
   nodeJson["position"] = obj;
 
@@ -69,13 +71,15 @@ Node::
 restore(QJsonObject const& json)
 {
   _uid = QUuid(json["id"].toString());
+  _nodeDataModel->restore(json["model"].toObject());
+
+  double width = _nodeGraphicsObject->boundingRect().width();
 
   QJsonObject positionJson = json["position"].toObject();
-  QPointF     point(positionJson["x"].toDouble(),
+  QPointF     point(positionJson["x"].toDouble() - width*0.5,
                     positionJson["y"].toDouble());
   _nodeGraphicsObject->setPos(point);
 
-  _nodeDataModel->restore(json["model"].toObject());
 }
 
 
@@ -214,11 +218,21 @@ void
 Node::
 onNodeSizeUpdated()
 {
+    int prev_width = nodeGeometry().width();
     if( nodeDataModel()->embeddedWidget() )
     {
         nodeDataModel()->embeddedWidget()->adjustSize();
     }
     nodeGeometry().recalculateSize();
+    int new_width = nodeGeometry().width();
+
+    if( new_width != prev_width )
+    {
+        auto node_pos = nodeGraphicsObject().pos();
+        node_pos.setX( node_pos.x() - (new_width - prev_width)*0.5);
+        nodeGraphicsObject().setPos(node_pos);
+    }
+
     for(PortType type: {PortType::In, PortType::Out})
     {
         for(auto& conn_set : nodeState().getEntries(type))
@@ -226,7 +240,7 @@ onNodeSizeUpdated()
             for(auto& pair: conn_set)
             {
                 Connection* conn = pair.second;
-                conn->getConnectionGraphicsObject().move();
+                conn->connectionGraphicsObject().move();
             }
         }
     }

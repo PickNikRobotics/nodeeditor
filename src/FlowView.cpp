@@ -9,7 +9,6 @@
 #include <QtCore/QRectF>
 #include <QtCore/QPointF>
 
-#include <QtOpenGL>
 #include <QtWidgets>
 
 #include <QDebug>
@@ -40,8 +39,9 @@ FlowView(QWidget *parent)
 
   setBackgroundBrush(flowViewStyle.BackgroundColor);
 
-  //setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+  setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
   //setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
+
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
@@ -164,15 +164,10 @@ contextMenuEvent(QContextMenuEvent *event)
 
     if (type)
     {
-      auto& node = _scene->createNode(std::move(type));
-
       QPoint pos = event->pos();
-
       QPointF posView = this->mapToScene(pos);
-
-      node.nodeGraphicsObject().setPos(posView);
-
-      _scene->nodePlaced(node);
+      auto& new_node = _scene->createNode(std::move(type));
+      _scene->setNodePosition(new_node, posView);
     }
     else
     {
@@ -229,7 +224,7 @@ void
 FlowView::
 scaleUp()
 {
-  double const step   = 1.2;
+  double const step   = 1.1;
   double const factor = std::pow(step, 1.0);
 
   QTransform t = transform();
@@ -245,7 +240,7 @@ void
 FlowView::
 scaleDown()
 {
-  double const step   = 1.2;
+  double const step   = 1.1;
   double const factor = std::pow(step, -1.0);
 
   scale(factor, factor);
@@ -259,6 +254,8 @@ deleteSelectedNodes()
   // Delete the selected connections first, ensuring that they won't be
   // automatically deleted when selected nodes are deleted (deleting a node
   // deletes some connections as well)
+  startNodeDelete();
+
   for (QGraphicsItem * item : _scene->selectedItems())
   {
     if (auto c = qgraphicsitem_cast<ConnectionGraphicsObject*>(item))
@@ -274,6 +271,8 @@ deleteSelectedNodes()
     if (auto n = qgraphicsitem_cast<NodeGraphicsObject*>(item))
       _scene->removeNode(n->node());
   }
+
+  finishNodeDelete();
 }
 
 
@@ -350,6 +349,7 @@ drawBackground(QPainter* painter, const QRectF& r)
   auto drawGrid =
     [&](double gridStep)
     {
+      gridStep = 1;
       QRect   windowRect = rect();
       QPointF tl = mapToScene(windowRect.topLeft());
       QPointF br = mapToScene(windowRect.bottomRight());
@@ -360,18 +360,20 @@ drawBackground(QPainter* painter, const QRectF& r)
       double top    = std::floor (br.y() / gridStep + 1.0);
 
       // vertical lines
-      for (int xi = int(left); xi <= int(right); ++xi)
+   //   for (int xi = int(left); xi <= int(right); ++xi)
       {
-        QLineF line(xi * gridStep, bottom * gridStep,
-                    xi * gridStep, top * gridStep );
+        int xi = 0;
+        QLineF line(xi * gridStep, bottom  * gridStep,
+                    xi * gridStep, top  * gridStep);
 
         painter->drawLine(line);
       }
 
       // horizontal lines
-      for (int yi = int(bottom); yi <= int(top); ++yi)
+      //for (int yi = int(bottom); yi <= int(top); ++yi)
       {
-        QLineF line(left * gridStep, yi * gridStep,
+        int yi = 0;
+        QLineF line(left  * gridStep, yi * gridStep,
                     right * gridStep, yi * gridStep );
         painter->drawLine(line);
       }
@@ -384,12 +386,12 @@ drawBackground(QPainter* painter, const QRectF& r)
   QPen pfine(flowViewStyle.FineGridColor, 1.0);
 
   painter->setPen(pfine);
-  drawGrid(15);
+  drawGrid(20);
 
-  QPen p(flowViewStyle.CoarseGridColor, 1.0);
+  QPen p(Qt::white, 2.0);
 
   painter->setPen(p);
-  drawGrid(150);
+  //drawGrid(150);
 }
 
 

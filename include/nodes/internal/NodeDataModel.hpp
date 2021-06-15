@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <QtWidgets/QWidget>
 
 #include "PortType.hpp"
@@ -22,8 +21,6 @@ enum class NodeValidationState
   Error
 };
 
-class Connection;
-
 class StyleCollection;
 
 class NODE_EDITOR_PUBLIC NodeDataModel
@@ -38,22 +35,6 @@ public:
 
   virtual
   ~NodeDataModel() = default;
-
-  /// Caption is used in GUI
-  virtual QString
-  caption() const = 0;
-
-  /// It is possible to hide caption in GUI
-  virtual bool
-  captionVisible() const { return true; }
-
-  /// Port caption is used in GUI to label individual ports
-  virtual QString
-  portCaption(PortType, PortIndex) const { return QString(); }
-
-  /// It is possible to hide port caption in GUI
-  virtual bool
-  portCaptionVisible(PortType, PortIndex) const { return false; }
 
   /// Name makes this model unique
   virtual QString
@@ -124,29 +105,7 @@ public:
   virtual
   NodePainterDelegate* painterDelegate() const { return nullptr; }
 
-public Q_SLOTS:
-
-  virtual void
-  inputConnectionCreated(Connection const&)
-  {
-  }
-
-  virtual void
-  inputConnectionDeleted(Connection const&)
-  {
-  }
-
-  virtual void
-  outputConnectionCreated(Connection const&)
-  {
-  }
-
-  virtual void
-  outputConnectionDeleted(Connection const&)
-  {
-  }
-
-Q_SIGNALS:
+signals:
 
   void
   dataUpdated(PortIndex index);

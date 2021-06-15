@@ -17,6 +17,7 @@
 #include "ConnectionState.hpp"
 #include "ConnectionGeometry.hpp"
 #include "ConnectionGraphicsObject.hpp"
+#include "StyleCollection.hpp"
 
 using QtNodes::Connection;
 using QtNodes::PortType;
@@ -34,6 +35,7 @@ Connection(PortType portType,
            Node& node,
            PortIndex portIndex)
   : _uid(QUuid::createUuid())
+  , _style(QtNodes::StyleCollection::connectionStyle())
   , _outPortIndex(INVALID)
   , _inPortIndex(INVALID)
   , _connectionState()
@@ -66,11 +68,6 @@ Connection(Node& nodeIn,
 Connection::
 ~Connection()
 {
-  if (complete())
-  {
-    connectionMadeIncomplete(*this);
-  }
-
   propagateEmptyData();
 
   if (_inNode)
@@ -129,14 +126,6 @@ Connection::
 id() const
 {
   return _uid;
-}
-
-
-bool
-Connection::
-complete() const
-{
-  return _inNode != nullptr && _outNode != nullptr;
 }
 
 
@@ -240,8 +229,6 @@ setNodeToPort(Node& node,
               PortType portType,
               PortIndex portIndex)
 {
-  bool wasIncomplete = !complete();
-
   auto& nodeWeak = getNode(portType);
 
   nodeWeak = &node;
@@ -254,9 +241,6 @@ setNodeToPort(Node& node,
   _connectionState.setNoRequiredPort();
 
   updated(*this);
-  if (complete() && wasIncomplete) {
-    connectionCompleted(*this);
-  }
 }
 
 
@@ -274,7 +258,7 @@ removeFromNodes() const
 
 ConnectionGraphicsObject&
 Connection::
-getConnectionGraphicsObject() const
+connectionGraphicsObject() const
 {
   return *_connectionGraphicsObject;
 }
@@ -360,11 +344,6 @@ void
 Connection::
 clearNode(PortType portType)
 {
-  if (complete())
-  {
-    connectionMadeIncomplete(*this);
-  }
-
   getNode(portType) = nullptr;
 
   if (portType == PortType::In)

@@ -46,6 +46,8 @@ public:
   void
   setHovered(bool hovered) { _hovered = hovered; }
 
+  void setPortLayout( PortLayout layout);
+
 private:
   // local object coordinates
   QPointF _in;
@@ -56,5 +58,7 @@ private:
   double _lineWidth;
 
   bool _hovered;
+
+  PortLayout _ports_layout;
 };
 }

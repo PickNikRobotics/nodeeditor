@@ -1,7 +1,7 @@
 #include "DataModelRegistry.hpp"
 
 #include <QtCore/QFile>
-#include <QtWidgets/QMessageBox>
+#include <QDebug>
 
 using QtNodes::DataModelRegistry;
 using QtNodes::NodeDataModel;
@@ -19,6 +19,12 @@ create(QString const &modelName)
     return it->second();
   }
 
+  qDebug() << "DataModelRegistry::create : unable to create [" <<
+              modelName << "]\nCandidates are:\n";
+  for(auto& creator_it: _registeredItemCreators)
+  {
+      qDebug() << "   " << creator_it.first;
+  }
   return nullptr;
 }
 
@@ -62,4 +68,17 @@ getTypeConverter(NodeDataType const & d1,
   }
 
   return TypeConverter{};
+}
+
+std::unordered_set<QString> DataModelRegistry::registeredModelsByCategory(const QString &category)
+{
+  std::unordered_set<QString> names_in_category;
+  for (auto& it: _registeredModelsCategory)
+  {
+    if( it.second == category)
+    {
+      names_in_category.insert(it.first);
+    }
+  }
+  return names_in_category;
 }
