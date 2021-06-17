@@ -150,7 +150,7 @@ endif()
 # Installation
 ##
 
-# include(GNUInstallDirs)
+include(GNUInstallDirs)
 
 set(INSTALL_CONFIGDIR lib/cmake/NodeEditor)
 
@@ -163,11 +163,11 @@ install(TARGETS nodes
 
 install(DIRECTORY include/ DESTINATION include)
 
-# install(EXPORT NodeEditorTargets
-#   FILE NodeEditorTargets.cmake
-#   NAMESPACE NodeEditor::
-#   DESTINATION ${INSTALL_CONFIGDIR}
-# )
+install(EXPORT export_nodes
+  FILE NodeEditorTargets.cmake
+  NAMESPACE NodeEditor::
+  DESTINATION ${INSTALL_CONFIGDIR}
+)
 
 include(CMakePackageConfigHelpers)
 
@@ -180,14 +180,6 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/NodeEditorConfig.cmake
   DESTINATION ${INSTALL_CONFIGDIR}
 )
-
-# install(
-#   TARGETS nodes
-#   EXPORT export_nodes
-#   ARCHIVE DESTINATION lib
-#   LIBRARY DESTINATION lib
-#   INCLUDES DESTINATION include
-# )
 
 ament_export_targets(export_nodes HAS_LIBRARY_TARGET)
 ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
