@@ -1,4 +1,4 @@
-get_filename_component(NodeEditor_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(node_editor_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 include(CMakeFindDependencyMacro)
 
@@ -12,8 +12,8 @@ find_package(Qt5 REQUIRED COMPONENTS
              Xml
              Svg)
 
-if(NOT TARGET NodeEditor::nodes)
-    include("${NodeEditor_CMAKE_DIR}/NodeEditorTargets.cmake")
+if(NOT TARGET node_editor::nodes)
+    include("${node_editor_CMAKE_DIR}/node_editorTargets.cmake")
 endif()
 
-set(NodeEditor_LIBRARIES NodeEditor::nodes)
+set(node_editor_LIBRARIES node_editor::nodes)

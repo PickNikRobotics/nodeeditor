@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.4)
 # version 3.4 is required as other do not work with C++14 and clang
 
-project(NodeEditor CXX)
+project(node_editor CXX)
 
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 set(CMAKE_DISABLE_SOURCE_CHANGES  ON)
@@ -65,7 +65,7 @@ add_library(nodes SHARED
 ament_target_dependencies(nodes ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 
-add_library(NodeEditor::nodes ALIAS nodes)
+add_library(node_editor::nodes ALIAS nodes)
 
 target_include_directories(nodes
   PUBLIC
@@ -152,7 +152,7 @@ endif()
 
 include(GNUInstallDirs)
 
-set(INSTALL_CONFIGDIR lib/cmake/NodeEditor)
+set(INSTALL_CONFIGDIR lib/cmake/node_editor)
 
 install(TARGETS nodes
   EXPORT export_nodes
@@ -164,20 +164,20 @@ install(TARGETS nodes
 install(DIRECTORY include/ DESTINATION include)
 
 install(EXPORT export_nodes
-  FILE NodeEditorTargets.cmake
-  NAMESPACE NodeEditor::
+  FILE node_editorTargets.cmake
+  NAMESPACE node_editor::
   DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 include(CMakePackageConfigHelpers)
 
-configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/NodeEditorConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/NodeEditorConfig.cmake
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/node_editorConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/node_editorConfig.cmake
   INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/NodeEditorConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/node_editorConfig.cmake
   DESTINATION ${INSTALL_CONFIGDIR}
 )
 
